@@ -1,0 +1,19 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: store-bff
+  description: "A Spring Boot service on CLX Container Apps"
+  annotations:
+    github.com/project-slug: sampgreenwell-cyber/storebff
+    backstage.io/source-location: url:https://github.com/sampgreenwell-cyber/storebff
+  tags:
+    - java
+    - spring-boot
+    - container-apps
+    - bff
+  labels:
+    clx.platform/template: spring-container-app
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:default/guests

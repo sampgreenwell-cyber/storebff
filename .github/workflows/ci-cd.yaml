@@ -1,0 +1,32 @@
+# The pipeline lives in sampgreenwell-cyber/platform-workflows. @v1 picks up non-breaking
+# platform fixes automatically; moving to @v2 is a deliberate change in this file.
+#
+#   pull request   -> build, test, Snyk (code + dependencies), image build check; into qa only from dev
+#   push to dev    -> the above, then push one image and deploy it to dev
+#   push to qa     -> after approval (GitHub environment "qa"), deploy the image dev built from
+#                     the same code; qa never builds its own
+#
+# Per-environment Azure settings are GitHub environment variables on "dev" and "qa".
+name: CI/CD
+
+on:
+  push:
+    branches: [dev, qa]
+  pull_request:
+    branches: [dev, qa]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write          # Azure sign-in with OIDC (no stored credentials)
+  security-events: write   # Snyk results in the Security tab
+  actions: read
+
+jobs:
+  pipeline:
+    uses: sampgreenwell-cyber/platform-workflows/.github/workflows/bicep-container-app.yaml@v1
+    with:
+      service-name: store-bff
+      image-repository: lab/store-bff
+      release-model: environment-branches
+    secrets: inherit

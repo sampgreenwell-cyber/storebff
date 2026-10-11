@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: store-bff
+
+server:
+  # Keep in sync with targetPort in infra/main.bicep and EXPOSE in the Dockerfile.
+  port: 8080
+
+# The orders-api API, through APIM. Both are set by infra/ (the key from this service's
+# own APIM subscription). Locally: export API_BASE_URL and API_SUBSCRIPTION_KEY.
+downstream-api:
+  base-url: ${API_BASE_URL:}
+  subscription-key: ${API_SUBSCRIPTION_KEY:}
