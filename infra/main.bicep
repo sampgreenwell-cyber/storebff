@@ -1,5 +1,5 @@
-// Service infrastructure: one Container App, optionally published through APIM.
-// Shared CLX platform resources (Container Apps environment, ACR, Key Vault, APIM,
+// Service infrastructure: the service's own identity, one Container App, optionally published
+// through APIM. Shared CLX platform resources (Container Apps environment, ACR, Key Vault, APIM,
 // deploy identity) are referenced, never created. Environment values live in
 // <env>.bicepparam. Deployed by the platform workflow per environment:
 //   az deployment group create -g <RESOURCE_GROUP> -f infra/main.bicep -p infra/<env>.bicepparam
@@ -34,8 +34,8 @@ param imageRepository string
 @minLength(1)
 param imageTag string
 
-@description('Existing user-assigned identity with AcrPull on the registry and Key Vault Secrets User on the Key Vault')
-param identityName string
+@description('Resource group of the container registry (CLX QA pulls from the dev registry)')
+param registryResourceGroup string = resourceGroup().name
 
 @description('Existing Key Vault name in this resource group')
 param keyVaultName string
@@ -95,8 +95,19 @@ resource managedEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' exist
   name: managedEnvironmentName
 }
 
-resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: identityName
+// This service's own identity: AcrPull on the registry and read access to its own Key Vault secrets
+// only. Created and granted by this deployment, before the Container App, so the first pull works.
+module serviceIdentity 'modules/service-identity/main.bicep' = {
+  name: '${serviceName}-identity'
+  params: {
+    name: 'id-lab-${serviceName}-${environmentCode}'
+    location: location
+    registryName: split(acrLoginServer, '.')[0]
+    registryResourceGroup: registryResourceGroup
+    keyVaultName: keyVaultName
+    keyVaultSecretNames: keyVaultSecretNames
+    tags: tags
+  }
 }
 
 var callsApi = !empty(downstreamApiName)
@@ -185,7 +196,7 @@ module app 'modules/container-app-service.bicep' = {
     managedEnvironmentId: managedEnvironment.id
     image: '${acrLoginServer}/${imageRepository}:${imageTag}'
     registryServer: acrLoginServer
-    userAssignedIdentityResourceId: identity.id
+    userAssignedIdentityResourceId: serviceIdentity.outputs.id
     targetPort: targetPort
     healthPath: '/health'
     externalIngress: exposeViaApim
@@ -217,4 +228,6 @@ module api 'modules/apim-api.bicep' = if (exposeViaApim) {
 
 output containerAppName string = app.outputs.containerAppName
 output containerAppFqdn string = app.outputs.fqdn
+@description('Client ID of this service\'s identity: what an API it calls puts in allowedCallerClientId')
+output identityClientId string = serviceIdentity.outputs.clientId
 output publicBaseUrl string = exposeViaApim ? '${apim!.properties.gatewayUrl}/${serviceName}${apimApiSuffix}' : ''

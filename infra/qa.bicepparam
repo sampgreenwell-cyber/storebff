@@ -10,9 +10,11 @@ param acrLoginServer = 'samgplabacr.azurecr.io'
 param imageRepository = 'lab/store-bff'
 // Set by the pipeline. Locally: $env:IMAGE_TAG = '<tag>' before az deployment group what-if.
 param imageTag = readEnvironmentVariable('IMAGE_TAG', '')
-// Lab identity (from the lab setup). It has AcrPull on
-// samgplabacr and Key Vault Secrets User on kv-samgp-lab.
-param identityName = 'id-lab-apps-qa'
+// The service gets its own identity (id-lab-store-bff-q01), granted AcrPull and read
+// access to the secrets below only. The deploy identity needs Role Based Access Control Administrator
+// limited to those two roles (platform-bicep-modules/service-identity/README.md).
+// QA pulls from the dev registry.
+param registryResourceGroup = 'rg-platform-services'
 param keyVaultName = 'kv-samgp-lab'
 param keyVaultSecretNames = [
   'dd-api-key'
